@@ -5,7 +5,7 @@ description = "Default template for PDM package"
 authors = [
     {name = "NingmengLemon", email = "60469383+NingmengLemon@users.noreply.github.com"},
 ]
-dependencies = []
+dependencies = ["fastapi[all]>=0.115.4", "sqlmodel>=0.0.22", "ApScheduler>=3.10.4"]
 requires-python = "==3.12.*"
 readme = "README.md"
 license = {text = "MIT"}
@@ -13,3 +13,6 @@ license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
+
+[dependency-groups]
+dev = ["ipykernel>=6.29.5"]
