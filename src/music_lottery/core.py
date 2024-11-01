@@ -76,9 +76,9 @@ def clear_expired_session():
 
 @with_lock(db_scanlock)
 def scan_update_musiclib():
-    if pause_event.is_set():
-        logger.info("Skip scan due to maintenance")
-        return
+    # if pause_event.is_set():
+    #     logger.info("Skip scan due to maintenance")
+    #     return
     logger.info("Scanning music library...")
     location = posixpath.normpath(config.musiclib_location)
     sfiles = walk_all_musicfiles(location)
