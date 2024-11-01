@@ -1,44 +1,62 @@
-from typing import Any
+import json
+from typing import Any, Literal
 import uuid
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer, field_validator
 from pydantic import Field as PydField
 from sqlmodel import Field, SQLModel
 
 
 class MusicMeta(SQLModel):
-    title: str
-    artists: list[str] = []
-    album: str | None = ""
-    albumartists: list[str] = []
-    cover: bytes | None = b""
-    extra: dict[str, Any] = {}
+    title: str | None = None
+    album: str | None = None
+    artists: str = "[]"
+    albumartists: str = "[]"
 
 
-class UsePrimaryKeyUUID(SQLModel):
+class MusicLibItem(MusicMeta, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-
-
-class MusicLibItem(UsePrimaryKeyUUID, MusicMeta, table=True):
     path: str = Field(unique=True)
     last_update: float
 
 
-class AccessSession(UsePrimaryKeyUUID, SQLModel, table=True):
+class AccessSession(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     music_id: uuid.UUID
     expires: float  # 时间戳
 
 
-class MusicResp(MusicMeta):
+class MusicResp(BaseModel):
+    id: uuid.UUID
+    title: str | None
+    album: str | None
+    artists: list[str]
+    albumartists: list[str]
     filename: str
     session: uuid.UUID
-    url: str
+    href: str
+
+    @field_validator("artists", "albumartists", mode="before")
+    @classmethod
+    def vali(cls, val):
+        if isinstance(val, str):
+            return json.loads(val)
+        return val
 
 
 class ConfigModel(BaseModel):
     musiclib_location: str
     access_token: str  # 用于申请音乐库分享
-    default_expires: int = PydField(60 * 5, lt=0)  # 分享过期用时(s)
-    scan_interval: int = PydField(0, le=0)  # 扫描音乐库间隔时间(s)，设为 0 为手动扫描
+    default_expires: int = PydField(60 * 5, gt=0)  # 分享过期用时(s)
+    scan_interval: int = PydField(
+        60 * 60 * 24, ge=0
+    )  # 扫描音乐库间隔时间(s)，设为 0 为手动扫描
     artists_split: str = "/"
     artists_dont_split: list[str] = []
+
+
+class StatusResp(BaseModel):
+    status: Literal["pause", "running"]
+    count: int
+    online: float
+    time: float

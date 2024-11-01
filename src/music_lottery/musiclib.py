@@ -1,4 +1,6 @@
+import json
 import os
+import posixpath
 import re
 from typing import Iterable
 
@@ -23,16 +25,37 @@ def walk_all_musicfiles(path: str):
     loca: dict[str, float] = {}
     for root, _, files in os.walk(path):
         for filename in files:
-            if os.path.splitext(filename)[1].lower() in MUSIC_EXTS:
-                file = os.path.join(root, filename)
-                loca[file] = os.path.getmtime(file)
+            if posixpath.splitext(filename)[1].lower() in MUSIC_EXTS:
+                file = posixpath.join(root, filename)
+                loca[file] = posixpath.getmtime(file)
     return loca
 
 
-def split_with_exclusions(input_string: str, delimiter: str, exclusions: Iterable[str]):
-    exclusion_pattern = "|".join(map(re.escape, exclusions))
-    pattern = rf"(?<!{exclusion_pattern}){re.escape(delimiter)}(?!{exclusion_pattern})"
-    result = re.split(pattern, input_string)
+def split_with_exclusions(
+    input_string: str,
+    delimiter: str,
+    exclusions: Iterable[str] = None,
+    ignore_case: bool = False,
+) -> list[str]:
+    inputs = input_string.split(delimiter)
+    if not exclusions:
+        return inputs
+    excs = {i.lower() for i in exclusions} if ignore_case else set(exclusions)
+    result = []
+    i = 0
+    while i < len(inputs):
+        if (
+            i + 1 < len(inputs)
+            and (str.lower if ignore_case else lambda x: x)(
+                exc := (inputs[i] + delimiter + inputs[i + 1])
+            )
+            in excs
+        ):
+            result.append(exc)
+            i += 1
+        else:
+            result.append(inputs[i])
+        i += 1
     return result
 
 
@@ -42,24 +65,24 @@ class MetadataReader:
 
     def handle_artist_field(self, artist_field: list[str]):
         if len(artist_field) == 1:
-            artists = split_with_exclusions(
-                artists[0], self.config.artists_split, self.config.artists_dont_split
+            return split_with_exclusions(
+                artist_field[0],
+                self.config.artists_split,
+                self.config.artists_dont_split,
             )
         return artist_field
 
     def read_metadata(self, path: str):
-        tag = TinyTag.get(path, image=True)
+        tag = TinyTag.get(path, image=False)
         tagd = tag.as_dict()
-        cover = None
-        if _ := tag.images.any:
-            cover = _.data
         return MusicMeta(
             title=tagd.pop("title", (None,))[0],
-            artists=self.handle_artist_field(tagd.pop("artist", [])),
             album=tagd.pop("album", (None,))[0],
-            cover=cover,
-            albumartists=self.handle_artist_field(
-                tagd.pop("albumartist", [])
+            artists=json.dumps(
+                self.handle_artist_field(tagd.pop("artist", [])), ensure_ascii=False
             ),
-            extra=tagd,
+            albumartists=json.dumps(
+                self.handle_artist_field(tagd.pop("albumartist", [])),
+                ensure_ascii=False,
+            ),
         )
