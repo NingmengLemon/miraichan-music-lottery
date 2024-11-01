@@ -77,6 +77,7 @@ class MetadataReader:
                 > 1
             ):
                 return result
+        return artist_field
 
     def read_metadata(self, path: str):
         tag = TinyTag.get(path, image=False)
