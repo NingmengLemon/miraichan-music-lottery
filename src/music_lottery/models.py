@@ -41,6 +41,8 @@ class MusicResp(BaseModel):
     @field_validator("artists", "albumartists", mode="before")
     @classmethod
     def vali(cls, val):
+        if not val:
+            return []
         if isinstance(val, str):
             return json.loads(val)
         return val
