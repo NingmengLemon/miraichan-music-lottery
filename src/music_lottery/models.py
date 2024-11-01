@@ -51,7 +51,7 @@ class ConfigModel(BaseModel):
     scan_interval: int = PydField(
         60 * 60 * 24, ge=0
     )  # 扫描音乐库间隔时间(s)，设为 0 为手动扫描
-    artists_split: str = "/"
+    artists_split: list[str] = ["/", ";", ","]
     artists_dont_split: list[str] = []
 
 

@@ -26,7 +26,7 @@ def walk_all_musicfiles(path: str):
     for root, _, files in os.walk(path):
         for filename in files:
             if posixpath.splitext(filename)[1].lower() in MUSIC_EXTS:
-                file = posixpath.join(root, filename)
+                file = posixpath.join(root, filename).replace("\\", "/")
                 loca[file] = posixpath.getmtime(file)
     return loca
 
@@ -65,11 +65,18 @@ class MetadataReader:
 
     def handle_artist_field(self, artist_field: list[str]):
         if len(artist_field) == 1:
-            return split_with_exclusions(
-                artist_field[0],
-                self.config.artists_split,
-                self.config.artists_dont_split,
-            )
+            for split in self.config.artists_split:
+                if (
+                    len(
+                        result := split_with_exclusions(
+                            artist_field[0],
+                            split,
+                            self.config.artists_dont_split,
+                        )
+                    )
+                    > 1
+                ):
+                    return result
         return artist_field
 
     def read_metadata(self, path: str):
