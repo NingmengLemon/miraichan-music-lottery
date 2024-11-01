@@ -4,7 +4,7 @@ import threading
 import time
 from typing import Annotated
 import uuid
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 import posixpath
 
 from fastapi import FastAPI, HTTPException, Depends, Query, Header
@@ -21,7 +21,7 @@ from .models import (
     ConfigModel,
     StatusResp,
 )
-from .utils import with_lock
+from .utils import run_as_async, with_lock
 from .musiclib import MetadataReader, walk_all_musicfiles
 
 INIT_TIME = time.time()
@@ -38,7 +38,7 @@ db_engine = create_engine(
 )
 db_scanlock = threading.Lock()
 pause_event = threading.Event()
-pause_event.clear()
+# pause_event.clear()
 
 
 def load_config(location: str = "config.json"):
@@ -173,8 +173,10 @@ AcSessDep = Annotated[AccessSession, Depends(verify_session)]
 async def verify_token(authorization: str = Header("")):
     if len(_ := authorization.split(maxsplit=1)) == 2:
         token = _[1]
-    else:
+    elif _:
         token = _[0]
+    else:
+        raise HTTPException(403, "不是哥们，你 token 呢")
     if token.strip() != config.access_token:
         raise HTTPException(403, "不是哥们，你的 token 错辣")
     return authorization
@@ -201,6 +203,22 @@ async def pause(_: AcTokenDep):
 @app.get("/resume")
 async def resume(_: AcTokenDep):
     pause_event.clear()
+    return "ok"
+
+
+@contextmanager
+def with_event_set(event: threading.Event | asyncio.Event):
+    event.set()
+    try:
+        yield
+    finally:
+        event.clear()
+
+
+@app.get("/scan")
+async def do_scan(_: AcTokenDep):
+    with with_event_set(pause_event):
+        await run_as_async(scan_update_musiclib)
     return "ok"
 
 
@@ -243,6 +261,7 @@ async def new_share(
             album=item.album,
             artists=item.artists,
             albumartists=item.albumartists,
+            duration=item.duration,
             session=session_id,
             href=f"/get?session={str(session_id)}",
             filename=posixpath.split(item.path)[1],

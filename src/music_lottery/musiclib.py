@@ -1,7 +1,6 @@
 import json
 import os
 import posixpath
-import re
 from typing import Iterable
 
 from .models import ConfigModel, MusicMeta
@@ -64,20 +63,20 @@ class MetadataReader:
         self.config = config
 
     def handle_artist_field(self, artist_field: list[str]):
-        if len(artist_field) == 1:
-            for split in self.config.artists_split:
-                if (
-                    len(
-                        result := split_with_exclusions(
-                            artist_field[0],
-                            split,
-                            self.config.artists_dont_split,
-                        )
+        if len(artist_field) != 1:
+            return artist_field
+        for split in self.config.artists_split:
+            if (
+                len(
+                    result := split_with_exclusions(
+                        artist_field[0],
+                        split,
+                        self.config.artists_dont_split,
                     )
-                    > 1
-                ):
-                    return result
-        return artist_field
+                )
+                > 1
+            ):
+                return result
 
     def read_metadata(self, path: str):
         tag = TinyTag.get(path, image=False)
@@ -92,4 +91,5 @@ class MetadataReader:
                 self.handle_artist_field(tagd.pop("albumartist", [])),
                 ensure_ascii=False,
             ),
+            duration=tagd.get("duration", 0),
         )

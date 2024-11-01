@@ -12,6 +12,7 @@ class MusicMeta(SQLModel):
     album: str | None = None
     artists: str = "[]"
     albumartists: str = "[]"
+    duration: float = 0
 
 
 class MusicLibItem(MusicMeta, table=True):
@@ -32,6 +33,7 @@ class MusicResp(BaseModel):
     album: str | None
     artists: list[str]
     albumartists: list[str]
+    duration: float = 0
     filename: str
     session: uuid.UUID
     href: str
@@ -39,15 +41,13 @@ class MusicResp(BaseModel):
     @field_validator("artists", "albumartists", mode="before")
     @classmethod
     def vali(cls, val):
-        if isinstance(val, str):
-            return json.loads(val)
-        return val
+        return json.loads(val)
 
 
 class ConfigModel(BaseModel):
     musiclib_location: str
     access_token: str  # 用于申请音乐库分享
-    default_expires: int = PydField(60 * 5, gt=0)  # 分享过期用时(s)
+    default_expires: int = PydField(60 * 30, gt=0)  # 分享过期用时(s)
     scan_interval: int = PydField(
         60 * 60 * 24, ge=0
     )  # 扫描音乐库间隔时间(s)，设为 0 为手动扫描
