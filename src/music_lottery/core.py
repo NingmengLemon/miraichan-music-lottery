@@ -264,6 +264,7 @@ async def new_share(
             duration=item.duration,
             session=session_id,
             href=f"/get?session={str(session_id)}",
+            player=f"/player?session={str(session_id)}",
             filename=posixpath.split(item.path)[1],
         )
     raise HTTPException(503, "哇呜，音乐库中没有可用的内容")
@@ -295,3 +296,8 @@ async def get_file(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
 #                 return StreamingResponse(img.data, media_type="image/jpeg")
 #             return b''
 #     raise HTTPException(404, "你的会话没有过期，只是文件找不到了，怎么秽蚀呢qwq")
+
+
+@app.get("/player")
+async def get_player(_: CkPauseDep):
+    return FileResponse("src/player.html")

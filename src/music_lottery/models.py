@@ -37,6 +37,7 @@ class MusicResp(BaseModel):
     filename: str
     session: uuid.UUID
     href: str
+    player: str
 
     @field_validator("artists", "albumartists", mode="before")
     @classmethod

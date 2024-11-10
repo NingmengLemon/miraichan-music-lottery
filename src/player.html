@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<!-- 在吉皮特先生的帮助下…… -->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>播放器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+        #container {
+            text-align: center;
+            max-width: 300px;
+        }
+
+        #error {
+            color: red;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="container">
+        <h2>神秘播放器</h2>
+        <audio id="audioPlayer" controls>
+            您的浏览器不支持音频播放
+        </audio>
+        <div id="error"></div>
+    </div>
+
+    <script>
+        function getSessionFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("session");
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById("error");
+            errorDiv.textContent = message;
+        }
+
+        function initAudioPlayer() {
+            const session = getSessionFromUrl();
+            const audioPlayer = document.getElementById("audioPlayer");
+
+            if (session) {
+                audioPlayer.src = `/get?session=${session}`;
+                audioPlayer.type = "audio/mpeg";
+
+                audioPlayer.addEventListener("error", function () {
+                    showError("音频加载失败");
+                    audioPlayer.style.display = "none";
+                });
+            } else {
+                showError("没找到 session 参数");
+                audioPlayer.style.display = "none";
+            }
+        }
+        window.onload = initAudioPlayer;
+    </script>
+
+</body>
+
+</html>
