@@ -38,6 +38,7 @@ class MusicResp(BaseModel):
     session: uuid.UUID
     href: str
     player: str
+    lyrics: str | None = None
 
     @field_validator("artists", "albumartists", mode="before")
     @classmethod

@@ -263,8 +263,13 @@ async def new_share(
             albumartists=item.albumartists,
             duration=item.duration,
             session=session_id,
-            href=f"/get?session={str(session_id)}",
-            player=f"/player?session={str(session_id)}",
+            href=f"/get?session={session_id}",
+            player=f"/player?session={session_id}",
+            lyrics=(
+                f"/lyrics?session={session_id}"
+                if posixpath.exists(posixpath.splitext(item.path)[0] + ".lrc")
+                else None
+            ),
             filename=posixpath.split(item.path)[1],
         )
     raise HTTPException(503, "哇呜，音乐库中没有可用的内容")
@@ -296,6 +301,19 @@ async def get_file(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
 #                 return StreamingResponse(img.data, media_type="image/jpeg")
 #             return b''
 #     raise HTTPException(404, "你的会话没有过期，只是文件找不到了，怎么秽蚀呢qwq")
+
+
+@app.get("/lyrics")
+async def get_lyrics(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
+    music_id = session.music_id
+    if item := dbsession.exec(
+        select(MusicLibItem).where(MusicLibItem.id == music_id)
+    ).one_or_none():
+        path = item.path
+        lrc_path = posixpath.splitext(path)[0] + ".lrc"
+        if posixpath.exists(lrc_path):
+            return FileResponse(lrc_path)
+    return HTTPException(404, "未找到歌词文件")
 
 
 @app.get("/player")
