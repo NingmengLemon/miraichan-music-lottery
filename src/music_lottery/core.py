@@ -21,7 +21,7 @@ from .models import (
     ConfigModel,
     StatusResp,
 )
-from .utils import run_as_async, with_lock
+from .utils import with_lock
 from .musiclib import MetadataReader, walk_all_musicfiles
 
 INIT_TIME = time.time()
@@ -218,7 +218,7 @@ def with_event_set(event: threading.Event | asyncio.Event):
 @app.get("/scan")
 async def do_scan(_: AcTokenDep):
     with with_event_set(pause_event):
-        await run_as_async(scan_update_musiclib)
+        await asyncio.to_thread(scan_update_musiclib)
     return "ok"
 
 
