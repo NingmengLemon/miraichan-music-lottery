@@ -6,10 +6,11 @@ from typing import Annotated
 import uuid
 from contextlib import asynccontextmanager, contextmanager
 import posixpath
+import re
 
 from fastapi import FastAPI, HTTPException, Depends, Query, Header
-from fastapi.responses import FileResponse, StreamingResponse
-from sqlmodel import create_engine, Session, select, SQLModel, func
+from fastapi.responses import FileResponse
+from sqlmodel import create_engine, Session, select, SQLModel, func, col
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from tinytag import TinyTag
@@ -245,9 +246,24 @@ async def new_share(
         ge=30,
         le=60 * 60 * 24,
     ),
+    title: str = Query(default=""),
+    album: str = Query(default=""),
+    artist: str = Query(default=""),
 ):
+    statement = select(MusicLibItem)
+    title, album, artist = (
+        title.strip(),
+        album.strip(),
+        re.sub(r"[\"\'\\\/\[\]\{\}]", "", artist.strip()),
+    )
+    if title:
+        statement = statement.where(col(MusicLibItem.title).icontains(title))
+    if album:
+        statement = statement.where(col(MusicLibItem.album).icontains(album))
+    if artist:
+        statement = statement.where(col(MusicLibItem.artists).icontains(artist))
     if item := dbsession.exec(
-        select(MusicLibItem).order_by(func.random()).limit(1)  # pylint: disable=E1102
+        statement.order_by(func.random()).limit(1)  # pylint: disable=E1102
     ).one_or_none():
         session_id = uuid.uuid4()
         session = AccessSession(
@@ -313,7 +329,20 @@ async def get_lyrics(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
         lrc_path = posixpath.splitext(path)[0] + ".lrc"
         if posixpath.exists(lrc_path):
             return FileResponse(lrc_path)
-    return HTTPException(404, "未找到歌词文件")
+    raise HTTPException(404, "未找到歌词文件")
+
+
+@app.get("/raw_tags")
+async def get_raw_tags(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
+    music_id = session.music_id
+    if item := dbsession.exec(
+        select(MusicLibItem).where(MusicLibItem.id == music_id)
+    ).one_or_none():
+        path = item.path
+        if posixpath.exists(path):
+            tag = TinyTag.get(path).as_dict()
+            return tag
+    raise HTTPException(404, "未找到音乐文件")
 
 
 @app.get("/player")
