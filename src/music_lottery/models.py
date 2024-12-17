@@ -75,11 +75,11 @@ class ScanResultResp(BaseModel):
 
 
 class MetadataResp(BaseModel):
-    filesize: int | None = None
-    duration: float | None = None
-    bitrate: float | None = None
-    samplerate: float | None = None
-    filename: str | None = None
+    filesize: int = 0
+    duration: float = 0.0
+    bitrate: float = 0.0
+    samplerate: int = 0
+    filename: str
 
     title: str | None = None
     artists: list[str] = PydField(default_factory=list)

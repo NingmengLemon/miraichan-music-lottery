@@ -9,7 +9,7 @@ import posixpath
 import re
 
 from fastapi import FastAPI, HTTPException, Depends, Query, Header
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 import filetype
 from sqlmodel import create_engine, Session, select, SQLModel, func, col
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -220,14 +220,14 @@ def with_event_set(event: threading.Event | asyncio.Event):
         event.clear()
 
 
-@app.get("/scan")
+@app.get("/scan", response_model=ScanResultResp)
 async def do_scan(_: AcTokenDep):
     with with_event_set(pause_event):
         a, u, d = await asyncio.to_thread(scan_update_musiclib)
     return ScanResultResp(add=a, update=u, delete=d)
 
 
-@app.get("/status")
+@app.get("/status", response_model=StatusResp)
 async def get_status(dbsession: DbSessDep, _: AcTokenDep):
     count = dbsession.exec(
         select(func.count()).select_from(MusicLibItem)  # pylint: disable=E1102
@@ -240,7 +240,7 @@ async def get_status(dbsession: DbSessDep, _: AcTokenDep):
     )
 
 
-@app.get("/draw")
+@app.get("/draw", response_model=MusicResp)
 async def new_share(
     dbsession: DbSessDep,
     _: AcTokenDep,
@@ -295,7 +295,7 @@ async def new_share(
     raise HTTPException(503, "哇呜，音乐库中没有可用的内容")
 
 
-@app.get("/get")
+@app.get("/get", response_class=FileResponse)
 async def get_file(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
     music_id = session.music_id
     if item := dbsession.exec(
@@ -307,7 +307,7 @@ async def get_file(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
     raise HTTPException(404, "你的会话没有过期，只是文件找不到了，怎么秽蚀呢qwq")
 
 
-@app.get("/image")
+@app.get("/image", response_class=FileResponse)
 async def get_cover(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
     if item := dbsession.exec(
         select(MusicLibItem).where(MusicLibItem.id == session.music_id)
@@ -323,7 +323,7 @@ async def get_cover(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
     raise HTTPException(404, "你的会话没有过期，只是文件找不到了，怎么秽蚀呢qwq")
 
 
-@app.get("/lyrics")
+@app.get("/lyrics", response_class=PlainTextResponse)
 async def get_lyrics(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
     music_id = session.music_id
     if item := dbsession.exec(
@@ -336,7 +336,7 @@ async def get_lyrics(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
     raise HTTPException(404, "未找到歌词文件")
 
 
-@app.get("/metadata")
+@app.get("/metadata", response_model=MetadataResp)
 async def get_metadata(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
     music_id = session.music_id
     if item := dbsession.exec(
@@ -353,14 +353,14 @@ async def get_metadata(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
                 track=raw.get("track"),
                 #
                 duration=item.duration,
-                filesize=raw.get("filesize"),
-                bitrate=raw.get("bitrate"),
-                samplerate=raw.get("samplerate"),
+                filesize=raw.get("filesize") or posixpath.getsize(path),
+                bitrate=raw.get("bitrate", 0.0),
+                samplerate=raw.get("samplerate", 0),
                 filename=posixpath.basename(path),
             )
     raise HTTPException(404, "未找到音乐文件")
 
 
-@app.get("/player")
+@app.get("/player", response_class=HTMLResponse)
 async def get_player(_: CkPauseDep):
     return FileResponse("src/player.html")
