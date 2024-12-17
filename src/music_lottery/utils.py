@@ -4,7 +4,7 @@ from typing import Callable
 
 
 def with_lock(lock: threading.Lock):
-    def deco(func: Callable):
+    def deco[T, P](func: Callable[[T], P]) -> Callable[[T], P]:
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
             with lock:

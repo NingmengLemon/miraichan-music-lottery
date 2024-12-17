@@ -21,6 +21,7 @@ MUSIC_EXTS = (
 
 
 def walk_all_musicfiles(path: str):
+    """路径: 修改时间"""
     loca: dict[str, float] = {}
     for root, _, files in os.walk(path):
         for filename in files:

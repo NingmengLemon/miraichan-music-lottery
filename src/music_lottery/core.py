@@ -9,17 +9,20 @@ import posixpath
 import re
 
 from fastapi import FastAPI, HTTPException, Depends, Query, Header
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
+import filetype
 from sqlmodel import create_engine, Session, select, SQLModel, func, col
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from tinytag import TinyTag
 
 from .models import (
+    MetadataResp,
     MusicLibItem,
     MusicResp,
     AccessSession,
     ConfigModel,
+    ScanResultResp,
     StatusResp,
 )
 from .utils import with_lock
@@ -128,6 +131,7 @@ def scan_update_musiclib():
                 dbsession.delete(item)
             dbsession.commit()
         logger.info("Deleted %s music records", len(to_delete))
+    return len(to_add), len(to_update), len(to_delete)
 
 
 @asynccontextmanager
@@ -219,8 +223,8 @@ def with_event_set(event: threading.Event | asyncio.Event):
 @app.get("/scan")
 async def do_scan(_: AcTokenDep):
     with with_event_set(pause_event):
-        await asyncio.to_thread(scan_update_musiclib)
-    return "ok"
+        a, u, d = await asyncio.to_thread(scan_update_musiclib)
+    return ScanResultResp(add=a, update=u, delete=d)
 
 
 @app.get("/status")
@@ -303,20 +307,20 @@ async def get_file(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
     raise HTTPException(404, "你的会话没有过期，只是文件找不到了，怎么秽蚀呢qwq")
 
 
-# @app.get("/image")
-# async def get_cover(
-#     dbsession: DbSessDep, __: AcSessDep, _: CkPauseDep, music_id: uuid.UUID = Query()
-# ):
-#     if item := dbsession.exec(
-#         select(MusicLibItem).where(MusicLibItem.id == music_id)
-#     ).one_or_none():
-#         path = item.path
-#         if posixpath.exists(path):
-#             tag = TinyTag.get(path, image=True)
-#             if img := tag.images.any:
-#                 return StreamingResponse(img.data, media_type="image/jpeg")
-#             return b''
-#     raise HTTPException(404, "你的会话没有过期，只是文件找不到了，怎么秽蚀呢qwq")
+@app.get("/image")
+async def get_cover(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
+    if item := dbsession.exec(
+        select(MusicLibItem).where(MusicLibItem.id == session.music_id)
+    ).one_or_none():
+        path = item.path
+        if posixpath.exists(path):
+            tag = TinyTag.get(path, image=True, duration=False)
+            if img := tag.images.any:
+                return Response(
+                    img.data,
+                    media_type=filetype.guess_mime(img.data) or "image/octet-stream",
+                )
+    raise HTTPException(404, "你的会话没有过期，只是文件找不到了，怎么秽蚀呢qwq")
 
 
 @app.get("/lyrics")
@@ -332,16 +336,28 @@ async def get_lyrics(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
     raise HTTPException(404, "未找到歌词文件")
 
 
-@app.get("/raw_tags")
-async def get_raw_tags(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
+@app.get("/metadata")
+async def get_metadata(dbsession: DbSessDep, _: CkPauseDep, session: AcSessDep):
     music_id = session.music_id
     if item := dbsession.exec(
         select(MusicLibItem).where(MusicLibItem.id == music_id)
     ).one_or_none():
         path = item.path
         if posixpath.exists(path):
-            tag = TinyTag.get(path).as_dict()
-            return tag
+            raw = TinyTag.get(path).as_dict()
+            return MetadataResp(
+                title=item.title,
+                album=item.album,
+                artists=item.artists,
+                albumartists=item.albumartists,
+                track=raw.get("track"),
+                #
+                duration=item.duration,
+                filesize=raw.get("filesize"),
+                bitrate=raw.get("bitrate"),
+                samplerate=raw.get("samplerate"),
+                filename=posixpath.basename(path),
+            )
     raise HTTPException(404, "未找到音乐文件")
 
 

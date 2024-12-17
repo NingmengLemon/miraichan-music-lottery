@@ -66,3 +66,32 @@ class StatusResp(BaseModel):
     count: int
     online: float
     time: float
+
+
+class ScanResultResp(BaseModel):
+    add: int
+    update: int
+    delete: int
+
+
+class MetadataResp(BaseModel):
+    filesize: int | None = None
+    duration: float | None = None
+    bitrate: float | None = None
+    samplerate: float | None = None
+    filename: str | None = None
+
+    title: str | None = None
+    artists: list[str] = PydField(default_factory=list)
+    albumartists: list[str] = PydField(default_factory=list)
+    album: str | None = None
+    track: int | None = None
+
+    @field_validator("artists", "albumartists", mode="before")
+    @classmethod
+    def vali(cls, val):
+        if not val:
+            return []
+        if isinstance(val, str):
+            return json.loads(val)
+        return val
