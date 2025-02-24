@@ -163,3 +163,5 @@ cython_debug/
 MusicLibrary/
 musiclib.db
 config.json
+
+static/

@@ -153,12 +153,12 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-app.mount("/assets", StaticFiles(directory="src/playerv2/assets"), "playerv2")
+app.mount("/assets", StaticFiles(directory="static/playerv2/assets"), "playerv2")
 
 
 @app.get("/playerv2", response_class=HTMLResponse)
 async def pv2index():
-    return FileResponse("src/playerv2/index.html")
+    return FileResponse("static/playerv2/index.html")
 
 
 @app.get("/teapot")
