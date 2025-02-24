@@ -1,0 +1,3 @@
+[submodule "src/playerv2"]
+	path = src/playerv2
+	url = https://github.com/Bian-Mu/lemon_bot_player
