@@ -10,6 +10,7 @@ import re
 
 from fastapi import FastAPI, HTTPException, Depends, Query, Header
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
+from fastapi.staticfiles import StaticFiles
 import filetype
 from sqlmodel import create_engine, Session, select, SQLModel, func, col
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -30,7 +31,6 @@ from .musiclib import MetadataReader, walk_all_musicfiles
 
 INIT_TIME = time.time()
 
-app = FastAPI()
 logger = logging.getLogger(__name__)
 
 db_filename = "musiclib.db"
@@ -153,6 +153,12 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.mount("/playerv2", StaticFiles(directory="src/playerv2"), "playerv2")
+
+
+@app.get("/playerv2", response_class=HTMLResponse)
+async def pv2index():
+    return FileResponse("src/playerv2/index.html")
 
 
 @app.get("/teapot")
