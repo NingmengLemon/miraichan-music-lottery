@@ -153,7 +153,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-app.mount("/playerv2", StaticFiles(directory="src/playerv2"), "playerv2")
+app.mount("/assets", StaticFiles(directory="src/playerv2/assets"), "playerv2")
 
 
 @app.get("/playerv2", response_class=HTMLResponse)
