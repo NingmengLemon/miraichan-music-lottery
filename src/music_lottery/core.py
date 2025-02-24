@@ -246,6 +246,10 @@ async def get_status(dbsession: DbSessDep, _: AcTokenDep):
     )
 
 
+def is_playerv2_available():
+    return posixpath.exists("static/playerv2/index.html")
+
+
 @app.get("/draw", response_model=MusicResp)
 async def new_share(
     dbsession: DbSessDep,
@@ -290,7 +294,7 @@ async def new_share(
             duration=item.duration,
             session=session_id,
             href=f"/get?session={session_id}",
-            player=f"/player?session={session_id}",
+            player=f"/player{"v2" if is_playerv2_available() else ""}?session={session_id}",
             lyrics=(
                 f"/lyrics?session={session_id}"
                 if posixpath.exists(posixpath.splitext(item.path)[0] + ".lrc")
